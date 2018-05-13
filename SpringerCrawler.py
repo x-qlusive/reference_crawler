@@ -33,7 +33,7 @@ def unescape(s):
    s = s.replace("&amp;", "&")
    return s
 
-response = urllib.request.urlopen(url2009)
+#response = urllib.request.urlopen(url2009) double? copy pase error?
 
 #get the DOI links of the different papers per conference
 doilinks = findall(regexDOI, htmlStr)
@@ -81,7 +81,7 @@ for link in completeLinks:
         titleReference.append(reference[refcount][1])
         yearPublishing.append(reference[refcount][3])
         writedata=[paperAuthor[linkCount],place[linkCount],year[0],author[refcount],titleReference[refcount],yearPublishing[refcount]]
-        with open("references.csv","a",newline='', encoding="utf-8") as csv_file:
+        with open("SpringerReferences.csv","a",newline='', encoding="utf-8") as csv_file:
             csvdata = csv.writer(csv_file)
             csvdata.writerow(writedata)
         refcount+=1
@@ -90,7 +90,7 @@ for link in completeLinks:
         titleReference.append("no Title")
         yearPublishing.append("no Date")
         writedata=[paperAuthor[linkCount],place[linkCount],year[0],author[refcount],titleReference[refcount],yearPublishing[refcount]]
-        with open("references.csv","a",newline='') as csv_file:
+        with open("SpringerReferences.csv","a",newline='') as csv_file:
             csvdata = csv.writer(csv_file)
             csvdata.writerow(writedata)
     linkCount+=1
