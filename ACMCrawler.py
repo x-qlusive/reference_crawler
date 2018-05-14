@@ -13,7 +13,7 @@ url2015 ="https://dl.acm.org/citation.cfm?id=2723839&preflayout=flat"
 url2016 ="https://dl.acm.org/citation.cfm?id=2882879&preflayout=flat"
 url2017 ="https://dl.acm.org/citation.cfm?id=3040565&preflayout=flat"
 url2018 ="https://dl.acm.org/citation.cfm?id=3178248&preflayout=flat"
-testurl ="https://doi.org/10.1145/2723839.2723840"
+yearnow=2018
 
 #avoids crawl security from ACM Digital Library
 class AppURLopener(urllib.request.FancyURLopener):
@@ -21,7 +21,7 @@ class AppURLopener(urllib.request.FancyURLopener):
 
 #appends attribute to redirected doi link to make it readable for the crawler
 def doirewriter(doi):
-    parse=requests.get(testurl, allow_redirects=False)
+    parse=requests.get(doi, allow_redirects=False)
     url = re.search("href=\"(.*)\"", parse.text).group(1) + "&preflayout=flat"
     return url
 
@@ -32,84 +32,81 @@ def unescape(s):
 
 regexDOI= "doi&gt\;\<a href=\"(.*)\" title"
 regexYear="\> (\d\d\d\d) Proceeding"
-
-# regexTitle="title>(.*?) [|]" keine Konferenztitel seit 2015
-regexAuthor="<a href=\"author_page.*>(.*)<" #author musst start at index 2 to not input the conference authors
-regexPlace="affiliation__item\"><.*?affiliation__.*?>(.*?)<.*?affiliation__.*?>(.*?)<"
-regexReference="CitationContent.*?>(.*?):.(.*?)([.(]|, <|, v|<s).*?(\d\d\d\d)"
-addurl="https://link.springer.com"
+#author in part 1 and place in part 2
+regexAuthor="Page\">(.*?)<.*?<small>(.*?)<"
+# author and puplication in place 1 and year in place 2
+regexReference="""(\d|\d\d)\n.*?<div>\n(<a.href=.*?>|.*?)(.*?)(\d\d\d\d|<\/div>)"""
 
 opener=AppURLopener()
-testurl2=doirewriter(testurl) #testdata
-response = opener.open(testurl2)
+response = opener.open(url2015)
 html = response.read()
 htmlStr = html.decode()
-
 htmlStr=unescape(htmlStr)
-
-authorFiltered = re.search(r"REFERENCES(.*)CITED", str(htmlStr), re.DOTALL).group(1)
-
-print(authorFiltered)
-"""
-response = urllib.request.urlopen(urlConference)
-
 #get the DOI links of the different papers per conference
-doilinks = findall(regexDOI, htmlStr)
+doilinks = findall(regexDOI, str(htmlStr))
 completeLinks=[]
 for item in doilinks:
-    completeLinks.append(addurl+item)
+    completeLinks.append(doirewriter(item))
 
 #get the year of the conference
-year=findall(regexYear, htmlStr)
-
-#get the title of the conference
-title=findall(regexTitle, htmlStr)
-
-#get the authors of the papers
-authors=[]
-place=[]
-places=[]
+year=findall(regexYear, str(htmlStr))
+htmlarticleauthor=[]
+htmlreferencesdata=[]
+htmlreferences=[]
+title=[]
 for item in completeLinks:
-    htmlDoi=urllib.request.urlopen(item).read().decode()
-    if len(findall(regexAuthor, htmlDoi)) == 1:
-        authors.append(findall(regexAuthor, htmlDoi)[0])
-    if len(findall(regexAuthor, htmlDoi)) >1:
-        authors.append(findall(regexAuthor, htmlDoi)[0]+' and '+findall(regexAuthor, htmlDoi)[1])
-    places.append(findall(regexPlace,htmlDoi))
-paperAuthor=[]
-for item in authors:
-    paperAuthor.append(item)
-#get the publishing places
-placeCount=0
-for item in places:
-    place.append(unescape(item[0][0]+" "+item[0][1]))
-    placeCount+=1
-#get the references
-linkCount=0
+    htmlDoi=unescape(opener.open(item).read().decode())
+    htmlauthors=re.search(r"Full.Text:(.*?)Bibliometrics:", str(htmlDoi), re.DOTALL).group(1)
+    htmlarticleauthor.append(re.findall("(Authors:|Author:)(.*?)Published.by", htmlauthors, re.DOTALL))
+    htmlreferences.append(re.findall("REFERENCES(.*)CITED", str(htmlDoi), re.DOTALL))
+    title.append(re.findall("<title>(.*)<\/title>", str(htmlDoi)))
+    #print(htmlreferences)
+    #htmlreferences=re.search(r"REFERENCES(.*)CITED", str(htmlDoi), re.DOTALL).group(1)
+authors=[]
+authorcount=0
+print(title)
+#get the authors of the articles
+for item in htmlarticleauthor:
+    authors.append(re.findall(regexAuthor,str(item),re.DOTALL))
+#    print("Article No.: "+str(authorcount+1))
+#    for i in range (len(authors[authorcount])):
+#        print("Author: "+authors[authorcount][i][0]+" Place: "+authors[authorcount][i][1])
+    authorcount+=1
+references=[]
+referencecount=0
+#get the authors and titles and the year of the publication
+for item in htmlreferences:
+    references.append(re.findall(regexReference, str(item[0]), re.DOTALL))
+    #print("Reference No.: " + str(referencecount+1))
+    #print(references)
+    #print("Authors and Title: "+references[referencecount][0][2])
+    #print("Year: "+references[referencecount][0][3 ])
+    referencecount+=1
+linkcount=0
+referencecount=0
 for link in completeLinks:
-    print('start')
-    htmlDoi=urllib.request.urlopen(link).read().decode()
-    reference=findall(regexReference,htmlDoi)
-    refcount=0
-    author=[]
-    titleReference=[]
-    yearPublishing=[]
-    for ref in reference:
-        author.append(reference[refcount][0])
-        titleReference.append(reference[refcount][1])
-        yearPublishing.append(reference[refcount][3])
-        writedata=[paperAuthor[linkCount],place[linkCount],year[0],author[refcount],titleReference[refcount],yearPublishing[refcount]]
-        with open("references.csv","a",newline='', encoding="utf-8") as csv_file:
-            csvdata = csv.writer(csv_file)
-            csvdata.writerow(writedata)
-        refcount+=1
-    if not reference:
-        author.append('no Author')
-        titleReference.append("no Title")
-        yearPublishing.append("no Date")
-        writedata=[paperAuthor[linkCount],place[linkCount],year[0],author[refcount],titleReference[refcount],yearPublishing[refcount]]
-        with open("references.csv","a",newline='') as csv_file:
-            csvdata = csv.writer(csv_file)
-            csvdata.writerow(writedata)
-    linkCount+=1
-"""
+    memberflag=0
+    communityflag=0
+    invalidflag=0
+    print("Article No.: "+str(linkcount+1))
+    #print(references)
+    for reference in references[linkcount]:
+        print(str(referencecount+1))
+        for i in range(len(authors[linkcount])):#
+            invalidflag = 0
+            try:
+                 if ((int(reference[3]) > yearnow) or (int(reference[3])) < 1900):
+                     invalidflag=1
+            except ValueError:
+                invalidflag =1
+            writedata=[authors[linkcount][i][0], authors[linkcount][i][1],title[linkcount][0],year[0],reference[2], reference[3], communityflag, memberflag, invalidflag]
+            with open("ACMreferences.csv","a",newline='', encoding="utf-8") as csv_file:
+               csvdata = csv.writer(csv_file)
+               csvdata.writerow(writedata)
+            #print(authors[linkcount][i][0] +" "+authors[linkcount][i][1])
+            #print(reference[2])
+            #print(reference[3])
+            #print(invalidflag)
+        referencecount+=1
+    referencecount=0
+    linkcount+=1
