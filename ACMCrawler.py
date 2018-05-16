@@ -131,7 +131,7 @@ for url in urls:
                         communityflag=1
 
                 for item in memberlistauthor:
-                   if authors[linkcount][i][1].find(str(item))!=(-1):
+                   if authors[linkcount][i][0 ].find(str(item))!=(-1):
                         memberauthor=1
 
                 for item in memberlistreference:
