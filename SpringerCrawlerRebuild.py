@@ -25,14 +25,18 @@ regexReference="CitationContent.*?>(.*?):.(.*?)([.(]|, <|, v|<s).*?(\d\d\d\d)"
 regexPublicationTitle=r"div class=\"content-type-list__title\">.*?href=\".*?\">(.*?)<\/a"
 addurl="https://link.springer.com"
 
+memberlistreference=["Elstermann, M.", "Gniza, R.", "Krenn, F.", "Borgert, S.", "Obermeier, S.", "Oppl, S.", "Schmidt, W.", "Singer, R.", "Turetken, O.", "Meyer, N.", "Dirndofer, M.", "Kurz, M.", "Reiner, M.", "Kindermann, H.", "Fischer, H.", "Bastarz, F.", "Strecker, F.", "Cornerlia, Z.", "Witt, C.", "Stary, C.", "Fichtenbauer, C.", "Kramm, A.", "Fleischmann, A.", "M. Elstermann","R. Gniza","F. Krenn","S. Borgert","S. Oppl","W. Schmidt","R. Singer","O. Turetken","N. Meyer","M. Dirnhofer","M. Kurz","M. Reiner","H. Kindermann","H. Fischer","F. Bastarz","F. Strecker","C. Zehbold","C. Witt","C. Stary","C. Fichtenbauer","A. Kramm","A. Fleischmann"]
+memberlistauthor=["Matthes Elstermann","Reinhard Gniza","Florian Krenn","Stephan Borgert","Stefan Oppl","Werner Schmidt","Robert Singer","Oktay Turetken","Nils Meyer","Max Dirnhofer","Matthias Kurz","Martin Reiner","Herbert Kindermann","Herbert Fischer","Fritz Bastarz","Florian Strecker","Cornelia Zehbold","Christoph Witt","Christian Stary","Christian Fichtenbauer","Anton Kramm","Albert Fleischmann"]
+
 def unescape(s):
    s = s.replace("&lt;", "<")
    s = s.replace("&gt;", ">")
    # this has to be last:
    s = s.replace("&amp;", "&")
+   s = s.replace("&amp", "&")
    return s
 
-authorscommunity=[]
+allauthorslist=[]
 
 for url in urls:
     response = urllib.request.urlopen(url)
@@ -59,28 +63,43 @@ for url in urls:
     place=[]
     places=[]
     for item in completeLinks:
-        htmlDoi=urllib.request.urlopen(item).read().decode()
-        if len(findall(regexAuthor, htmlDoi)) == 1:
-            authors.append(findall(regexAuthor, htmlDoi)[0])
-        if len(findall(regexAuthor, htmlDoi)) >1:
-            authors.append(findall(regexAuthor, htmlDoi)[0]+' and '+findall(regexAuthor, htmlDoi)[1])
+        allauthor=[]
+        htmlDoi=unescape(urllib.request.urlopen(item).read().decode('utf-8'))
+        authorcount=findall(regexAuthor, htmlDoi)
+        #collects a list of all single authors
+        for i in range (len(authorcount)):
+            allauthor.append(authorcount[i])
+            allauthorslist.append(allauthor[i])
+        authors.append(allauthor)
         places.append(findall(regexPlace,htmlDoi))
-
+    print(authors)
+    print(places)
     paperAuthor=[]
     for item in authors:
-        paperAuthor.append(item)
+        paperAuthor.append(' and '.join(item))
+
+    #get shortened names for communitycheck
+    shortauthor=[]
+    for author in allauthorslist:
+        shortened=author.split()[0][0]
+        last=author.split()[1]
+        shortauthor.append(last+', '+shortened+'.')
+        shortauthor.append(last+' '+shortened+'.')
 
     #get the publishing places
     placeCount=0
     for item in places:
-        place.append(unescape(item[0][0]+" "+item[0][1]))
+        allplace=[]
+        for i in range (len(item)):
+            allplace.append(item[i][0]+" "+item[i][1])
+            print(allplace)
+        place.append(' and '.join(allplace))
+        #place.append(unescape(item[0][0]+" "+item[0][1]))
         placeCount+=1
     #get the references
     linkCount=0
     for link in completeLinks:
-        memberflag=0
-        communityflag=0
-        htmlDoi=urllib.request.urlopen(link).read().decode()
+        htmlDoi=unescape(urllib.request.urlopen(link).read().decode())
         reference=findall(regexReference,htmlDoi)
         refcount=0
         author=[]
@@ -88,6 +107,9 @@ for url in urls:
         yearPublishing=[]
         for ref in reference:
             invalidflag=0
+            communityflag=0
+            memberreference=0
+            memberauthor=0
             author.append(reference[refcount][0])
             titleReference.append(reference[refcount][1])
             yearPublishing.append(reference[refcount][3])
@@ -96,13 +118,29 @@ for url in urls:
                      invalidflag=1
             except ValueError:
                 invalidflag =1
-            writedata=[paperAuthor[linkCount],place[linkCount],year[0],publicationTitle[linkCount],author[refcount]+" "+titleReference[refcount],yearPublishing[refcount],communityflag,memberflag,invalidflag]
+
+            for item in shortauthor:
+                if author[refcount].find(str(item))!=(-1):
+                    communityflag=1
+
+            for item in memberlistauthor:
+                if paperAuthor[linkCount].find(str(item))!=(-1):
+                    memberauthor=1
+
+            for item in memberlistreference:
+                if author[refcount].find(str(item))!=(-1):
+                    memberreference=1
+
+            writedata=[paperAuthor[linkCount],place[linkCount],year[0],publicationTitle[linkCount],author[refcount]+" "+titleReference[refcount],yearPublishing[refcount],communityflag,memberreference, memberauthor,invalidflag]
             with open("SpringerReferences.csv","a",newline='', encoding="utf-8") as csv_file:
                 csvdata = csv.writer(csv_file)
                 csvdata.writerow(writedata)
             refcount+=1
         if not reference:
+            communityflag=0
             invalidflag=0
+            memberreference=0
+            memberauthor=0
             author.append('no Author')
             titleReference.append("no Title")
             yearPublishing.append("no Date")
@@ -111,9 +149,23 @@ for url in urls:
                     invalidflag=1
             except ValueError:
                 invalidflag =1
-            writedata=[paperAuthor[linkCount],place[linkCount],year[0],publicationTitle[linkCount],author[refcount]+" "+titleReference[refcount],yearPublishing[refcount],communityflag,memberflag,invalidflag]
+
+            for item in shortauthor:
+                if author[refcount].find(str(item))!=(-1):
+                    communityflag=1
+
+            for item in memberlistauthor:
+                if author[refcount].find(str(item))!=(-1):
+                    memberauthor=1
+
+            for item in memberlistreference:
+                if author[refcount].find(str(item))!=(-1):
+                    memberreference=1
+
+            writedata=[paperAuthor[linkCount],place[linkCount],year[0],publicationTitle[linkCount],author[refcount]+" "+titleReference[refcount],yearPublishing[refcount],communityflag,memberreference, memberauthor,invalidflag]
             with open("SpringerReferences.csv","a",newline='') as csv_file:
                 csvdata = csv.writer(csv_file)
                 csvdata.writerow(writedata)
             refcount+=1
         linkCount+=1
+print(allauthorslist)
