@@ -96,7 +96,7 @@ for url in urls:
                      invalidflag=1
             except ValueError:
                 invalidflag =1
-            writedata=[paperAuthor[linkCount],place[linkCount],year[0],publicationTitle[linkCount],author[refcount]+" "+titleReference[refcount],yearPublishing[refcount],communityflag,memberflag,invalidflag]
+            writedata=[paperAuthor[linkCount],place[linkCount],publicationTitle[linkCount],year[0],author[refcount]+" "+titleReference[refcount],yearPublishing[refcount],communityflag,memberflag,invalidflag]
             with open("SpringerReferences.csv","a",newline='', encoding="utf-8") as csv_file:
                 csvdata = csv.writer(csv_file)
                 csvdata.writerow(writedata)

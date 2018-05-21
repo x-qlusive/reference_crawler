@@ -93,6 +93,7 @@ for url in urls:
         last=author.split()[1]
         shortauthor.append(last+', '+shortened+'.')
         shortauthor.append(last+' '+shortened+'.')
+        shortauthor.append(shortened+". "+last)
 
 
     #for i in range (len(authors[authorcount])):
@@ -130,6 +131,10 @@ for url in urls:
                     if reference[2].find(str(item))!=(-1):
                         communityflag=1
 
+                for item in allauthorslist:
+                    if reference[2].find(str(item))!=(-1):
+                        communityflag=1
+
                 for item in memberlistauthor:
                    if authors[linkcount][i][0 ].find(str(item))!=(-1):
                         memberauthor=1
@@ -150,3 +155,4 @@ for url in urls:
         referencecount=0
         linkcount+=1
 print(allauthorslist)
+print(shortauthor)
